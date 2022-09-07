@@ -482,9 +482,7 @@ plt.close()
 
 ## Dependencies
 
-This code was implemented using Python 3.10 and needs Numpy, Matplotlib Seaborn and Scipy.
-
-For graphics/boxplots_errors.py, pickle is necessary though this is not at all required to use all functions and classes implemented in this repository.
+This code was implemented using Python 3.8 and needs Numpy, Matplotlib Seaborn and Scipy.
 
 ## Installation
 
@@ -494,7 +492,4 @@ Copy all files in the current working directory.
 
 Song Wei
 
-## References
 
-<a id="1">[1]</a>
-R. Lemonnier, N. Vayatis, Nonparametric markovian learning of triggering kernels for mutually exciting and mutually inhibiting multivariate hawkes processes, in: Machine Learning and Knowledge Discovery in Databases, Springer Berlin Heidelberg, 2014, p. 161–176
