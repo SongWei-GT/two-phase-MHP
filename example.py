@@ -1,16 +1,3 @@
-# A two-phase gradient-based heuristic for Exponential multivariate Hawkes Processes
-
-Source code for [Granger Causal Chain Discovery for Sepsis-Associated Derangements via Multivariate Hawkes Processes].
-
-It includes (1) simulation of linear MHP with both excitation and inhibitation effects; (2) log-likelihood calculation; (3) calculation of the gradient of the surrogate likelihood.
-
-## Example
-
-An example of how to simulate multiple MHP sequences and how to perform the two-phase algorithm are shown below.
-
-### Data generation 
-
-```py
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -20,7 +7,8 @@ import scipy as sp
 from scipy.linalg import expm
 from src import rand_DAG_generation
 
-# %% set-up
+
+# %% MHP data generation
 
 d = 5
 
@@ -28,28 +16,6 @@ beta = 0.8
 B = beta
 
 [mu, A] = rand_DAG_generation.my_rand_DAG(d)
-# feel free to use your own code the generate the problem parameters
-
-
-# plot the true matrix
-plt.style.use("default")
-
-true_mat = A 
-d = true_mat.shape[0]
-  
-divnorm=colors.TwoSlopeNorm(vmin=-true_mat.max(), vcenter=0., vmax=-true_mat.min())
-plt.figure()
-fig, ax = plt.subplots()
-im = ax.imshow(-true_mat,cmap="bwr",norm = divnorm)
-
-for i in range(d):
-    for j in range(d):
-        text = ax.text(j, i, np.round(true_mat[i, j]*100)/100,
-                        ha="center", va="center")
-plt.show()
-plt.close() 
-
-# %% MHP data generation
 
 T = 240
 M = 100
@@ -64,7 +30,6 @@ tmp_t = time.time()
 elapsed = time.time() - tmp_t
 
 print("data generation elapsed time is:",elapsed)
-# data generation elapsed time is: 2.016613245010376
 
 all_event_time = all_event_time_all.copy()[0:M_train]
 all_event_idx = all_event_idx_all.copy()[0:M_train]
@@ -74,19 +39,14 @@ num_of_seq = M_train
 tmp_t = time.time()
 true_log_lik = my_functions.exp_kernel_log_lik_for_multiple_seq(all_event_time[0:num_of_seq], all_event_idx[0:num_of_seq], mu, A, beta, num_of_seq)
 print("log likelihood on ground truth is:", true_log_lik)
-# log likelihood on ground truth is: -35052.308987812874
 elapsed = time.time() - tmp_t
 
 print("log lik evaluation elapsed time is:",elapsed)
-# log lik evaluation elapsed time is: 0.20827794075012207
-```
+# log likelihood on ground truth is:  -95931.98258484628
 
-<img src="./examples/true_A.png" width="500">
-
-
-### Phase 1: naive PGD
-
-```py
+              
+# %%  phase 1: naive PGD
+plt.style.use('seaborn-whitegrid')
 memory_length = 8
 batch_size = M
 
@@ -108,7 +68,7 @@ A0 = np.zeros([d,d])
 my_log_lik = my_functions.exp_kernel_log_lik_for_multiple_seq(all_event_time, all_event_idx, mu0, A0, beta, M_train)
 log_lik_traj = [my_log_lik]
 print("initial log likelihood is:", my_log_lik)
-# initial log likelihood is: -49715.85532390992
+# # initial log likelihood is:  -84907.02153642701
 
 
 err_mu = []
@@ -185,19 +145,52 @@ for ep_idx in range(ep_num_p1):
         print("iter",ep_idx+1,"elapsed time is hour:",elapsed/3600.0)
         print("log likelihood is:", my_log_lik)
 
+        
+err_A_full_traj = []
+err_mu_full_traj = []     
+err_A_full_traj += err_A 
+err_mu_full_traj += err_mu
 
-# plt.style.use('seaborn-whitegrid')
-# plt.figure()
-# plt.plot(np.log(err_A))
-# plt.xlabel('num. of iter.')
-# plt.ylabel('log of l1 error on A')
-# plt.show()
+zero_idx = (A == 0)
+non_zero_idx = (A != 0)
 
-```
+abs_err_vec = np.abs(A - A0)
+non_zero_errors = abs_err_vec[non_zero_idx]
+non_zero_relative_errors = (abs_err_vec[non_zero_idx]/np.abs(A[non_zero_idx]))
+zero_errors = abs_err_vec[non_zero_idx]
 
-### Determine the coordinate on which we apply phase 2 GD
+plt.figure()
+plt.plot(np.log(err_mu))
+plt.xlabel('num. of iter.')
+plt.ylabel('log l1 error on mu')
+plt.show()
 
-```py
+plt.figure()
+plt.plot(np.log(err_A))
+plt.xlabel('num. of iter.')
+plt.ylabel('log of l1 error on A')
+plt.show()
+
+
+plt.figure()
+plt.plot(np.log(mu_grad_norm_traj))
+plt.xlabel('num. of iter.')
+plt.ylabel('log of L2 norm of gradient w.r.t. mu')
+plt.show()
+
+
+plt.figure()
+plt.plot(np.log(A_grad_norm_traj))
+#plt.plot(np.log(A_grad_norm_traj0))
+plt.xlabel('num. of iter.')
+plt.ylabel('log of L2 norm of gradient w.r.t. A')
+plt.show()
+
+         
+#%% determine the coordiante to further GD
+
+#np.sum((A-A0)**2,1)
+
 GD_norm = (np.sum((pl_pA)**2,1))
 total_norm = sum(GD_norm)
 CD_order = np.argsort(-GD_norm) 
@@ -236,18 +229,20 @@ plt.xlabel('Node/row index')
 plt.ylabel('squared L2 norm of gradient row vector')
 plt.xticks(x)
 plt.show()
-```
 
-<img src="./examples/check_gradient_norm.png" width="500">
 
-### Phase 2 (batch) Coordinate GD
+# %% phase 2: GD 
+plt.style.use('seaborn-whitegrid')
 
-```py
+err_A_full_traj_naiveGD = []
+err_mu_full_traj_naiveGD = []     
+err_A_full_traj_naiveGD += err_A 
+err_mu_full_traj_naiveGD += err_mu
+
 memory_length = 8
 batch_size = M
 
 
-ep_num = 500
 
 lr_thres = 1e-5
 min_grad = np.inf
@@ -380,6 +375,7 @@ for target_idx in cor_GD_collection:
             print("iter",ep_idx+1,"elapsed time is hour:",elapsed/3600.0)
             print("A L1 err =",err_A_naiveGD[-1])           
 
+    err_A_full_traj_naiveGD += err_A_naiveGD[1:]
     
 
 
@@ -457,10 +453,54 @@ for target_idx in cor_GD_collection:
             elapsed = time.time() - tmp_t
             
             print("iter",ep_idx+1,"elapsed time is hour:",elapsed/3600.0)
-            print("mu L1 err =",err_mu_naiveGD[-1])    
+            print("mu L1 err =",err_mu_naiveGD[-1])      
+    
+            
+    
+    # np.savez(file_name + "_all.npz", err_mu_naiveGD = err_mu_naiveGD, err_A_naiveGD = err_A_naiveGD, 
+    #           mu_grad_norm_traj_naiveGD = mu_grad_norm_traj_naiveGD, A_grad_norm_traj_naiveGD = A_grad_norm_traj_naiveGD, 
+    #           mu_traj_naiveGD = mu_traj_naiveGD, A_traj_naiveGD = A_traj_naiveGD, barrier_traj_naiveGD = barrier_traj_naiveGD, A_grad_norm_traj_naiveGD0 = A_grad_norm_traj_naiveGD0)  
+                
+    
+    err_mu_full_traj_naiveGD += err_mu_naiveGD[1:]
+    
+
+    
+
+plt.figure()
+plt.plot(np.log(err_mu_full_traj_naiveGD))
+plt.xlabel('num. of iter.')
+plt.ylabel('log l1 error on mu')
+plt.show()
+
+
+plt.figure()
+plt.plot(np.log(err_A_full_traj_naiveGD))
+plt.xlabel('num. of iter.')
+plt.ylabel('log l1 error on A')
+plt.show()
+
+
+#%% plot the true matrix
+
+plt.style.use("default")
+
+true_mat = A 
+d = true_mat.shape[0]
+  
+divnorm=colors.TwoSlopeNorm(vmin=-true_mat.max(), vcenter=0., vmax=-true_mat.min())
+plt.figure()
+fig, ax = plt.subplots()
+im = ax.imshow(-true_mat,cmap="bwr",norm = divnorm)
+
+for i in range(d):
+    for j in range(d):
+        text = ax.text(j, i, np.round(true_mat[i, j]*100)/100,
+                        ha="center", va="center")
+plt.show()
+plt.close()  
 
 # plot the recovered matrix
-plt.style.use("default")
 
 true_mat = A1    
 d = true_mat.shape[0]
@@ -476,25 +516,6 @@ for i in range(d):
                         ha="center", va="center")
 plt.show()
 plt.close()
-```
 
-<img src="./examples/recovered_A.png" width="500">
 
-## Dependencies
 
-This code was implemented using Python 3.10 and needs Numpy, Matplotlib Seaborn and Scipy.
-
-For graphics/boxplots_errors.py, pickle is necessary though this is not at all required to use all functions and classes implemented in this repository.
-
-## Installation
-
-Copy all files in the current working directory.
-
-## Author
-
-Song Wei
-
-## References
-
-<a id="1">[1]</a>
-R. Lemonnier, N. Vayatis, Nonparametric markovian learning of triggering kernels for mutually exciting and mutually inhibiting multivariate hawkes processes, in: Machine Learning and Knowledge Discovery in Databases, Springer Berlin Heidelberg, 2014, p. 161–176
