@@ -2,7 +2,12 @@
 
 Source code for [Granger Causal Chain Discovery for Sepsis-Associated Derangements via Multivariate Hawkes Processes].
 
-It includes (1) simulation of linear MHP with both excitation and inhibitation effects; (2) log-likelihood calculation; (3) calculation of the gradient of the surrogate likelihood.
+It includes 
+(1) simulation of linear MHP with both excitation and inhibitation effects; 
+(2) log-likelihood calculation; 
+(3) calculation of the gradient of the surrogate likelihood.
+
+Moreover, we also provide a time-series version in my_functions_TS.py
 
 ## Example
 
