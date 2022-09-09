@@ -413,9 +413,9 @@ for i in range(d):
 plt.show()
 plt.close()
 ```
-We can see this recovered adjacency matrix is very close to the true one.
+We can see this recovered adjacency matrix (left) is very close to the true one (right).
 
-<img src="./examples/recovered_A.png" width="500">
+<img src="./examples/recovered_A.png" width="250">  <img src="./examples/true_A.png" width="250">
 
 ## Dependencies
 
