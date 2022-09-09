@@ -114,36 +114,16 @@ print("initial log likelihood is:", my_log_lik)
 err_mu = []
 err_A = []
 
-barrier_traj = []
-#min_intensity_traj = []
-
 
 mu_traj = [mu0]
 A_traj = [A0]
 
-# mu_grad_traj = []
-# A_grad_traj = []
-
-
 mu_grad_norm_traj = [np.inf]
 A_grad_norm_traj = [np.inf]
-
-
-
-best_A = A0
-best_mu = mu0
-min_grad = np.inf
-
-stop_creterion = [0]
-flag_lr = 0
-
-
 
 tmp_t = time.time()
 
 for ep_idx in range(ep_num_p1):    
-
-
     
     [ pl_pmu , pl_pA ] = my_functions.my_penalized_GD_with_log_barrier_update(all_event_time, all_event_idx, mu0, A0, B, M_train, batch_size = batch_size, 
                                                                   log_barrier = False, penalty = None, memory_length = memory_length)        
@@ -158,8 +138,7 @@ for ep_idx in range(ep_num_p1):
     A0[A0 < 0] = 0
     mu0[mu0 < 0] = 0
     
-    # save the traj
-    
+    # save the traj  
     err_mu.append(np.sum(np.abs(mu-mu0)))
     err_A.append(np.sum(np.abs(A-A0)))
     
@@ -238,6 +217,8 @@ plt.xticks(x)
 plt.show()
 ```
 
+This part of algorithm helps locate a small batch of coordinates on which we need further perform GD.
+
 <img src="./examples/check_gradient_norm.png" width="500">
 
 ### Phase 2 (batch) Coordinate GD
@@ -245,7 +226,6 @@ plt.show()
 ```py
 memory_length = 8
 batch_size = M
-
 
 ep_num = 500
 
@@ -274,7 +254,6 @@ for target_idx in cor_GD_collection:
     err_A_naiveGD = [np.inf]
     
     barrier_traj_naiveGD = [np.inf]
-    #min_intensity_traj_naiveGD = []
     
     
     mu_traj_naiveGD = [mu1]
@@ -290,22 +269,12 @@ for target_idx in cor_GD_collection:
     mu_grad_norm_traj_naiveGD0 = [np.inf]
     A_grad_norm_traj_naiveGD0 = [np.inf]
     
-    best_A = A1
-    best_mu = mu1
-    min_grad = np.inf
-    
-    stop_creterion = [0]
-    flag_lr = 0
-    
     
     # part 1: optimize A
     tmp_t = time.time()
     lr = 1e-2
     
     for ep_idx in range(ep_num):   
-    #while lr >= lr_thres :
-
-
 
         pl_pA_target_0 = my_functions.my_penalized_GD_with_log_barrier_update_A(all_event_time, all_event_idx, target_idx, mu1, A1, B, M_train, batch_size = batch_size, 
                                                                       log_barrier = False, penalty = None, memory_length = memory_length)        
@@ -316,36 +285,24 @@ for target_idx in cor_GD_collection:
         #tmp_grad_norm_mu0 = np.sqrt((pl_pmu0**2).sum())
         tmp_grad_norm_A0 = np.sqrt((pl_pA_target_0**2).sum())
         
-    
-        #elapsed = time.time() - tmp_t
-    
-        #print("grad evaluation elapsed time is:",elapsed)
-        
-        #tmp_grad_norm_mu = np.sqrt((pl_pmu**2).sum())
         tmp_grad_norm_A = np.sqrt((pl_pA_target**2).sum())
         
          
         
         if tmp_grad_norm_A0 <= A_grad_norm_traj_naiveGD0[-1]:
-        
-            #tmp_len = min(window_length,ep_idx+1)
-            
+                    
             for tmp_idx in [target_idx]:
                 A1[tmp_idx,:] += lr*pl_pA_target/tmp_grad_norm_A
                 # mu1[tmp_idx] += lr*pl_pmu[tmp_idx]/tmp_grad_norm_mu
                 # mu1[mu1 < 0] = 0        
             # save the traj_naiveGD
             
-            #err_mu_naiveGD.append(np.sum(np.abs(mu-mu1)))
             err_A_naiveGD.append(np.sum(np.abs(A-A1)))
             
-            #mu_traj_naiveGD.append(mu1.copy())    
             A_traj_naiveGD.append(A1.copy())
             
-            #mu_grad_norm_traj_naiveGD.append(tmp_grad_norm_mu)  
             A_grad_norm_traj_naiveGD.append(tmp_grad_norm_A) 
             
-            #mu_grad_norm_traj_naiveGD0.append(tmp_grad_norm_mu0)  
             A_grad_norm_traj_naiveGD0.append(tmp_grad_norm_A0) 
             
         else:
@@ -356,32 +313,23 @@ for target_idx in cor_GD_collection:
             if lr <= lr_thres:
                 break
     
-            #err_mu_naiveGD = err_mu_naiveGD[:-1]
             err_A_naiveGD = err_A_naiveGD[:-1]
             
-            #mu_traj_naiveGD = mu_traj_naiveGD[:-1]
             A_traj_naiveGD = A_traj_naiveGD[:-1]
             
-            #mu_grad_norm_traj_naiveGD = mu_grad_norm_traj_naiveGD[:-1]
             A_grad_norm_traj_naiveGD = A_grad_norm_traj_naiveGD[:-1]
             
-            #mu_grad_norm_traj_naiveGD0 = mu_grad_norm_traj_naiveGD0[:-1]
             A_grad_norm_traj_naiveGD0 = A_grad_norm_traj_naiveGD0[:-1]        
             
             A1 = A_traj_naiveGD[-1]
-            #mu1 = mu_traj_naiveGD[-1]    
   
     
         if ((ep_idx+1) % 100) == 0:
-            
-            
+
             elapsed = time.time() - tmp_t
             
             print("iter",ep_idx+1,"elapsed time is hour:",elapsed/3600.0)
             print("A L1 err =",err_A_naiveGD[-1])           
-
-    
-
 
 
     # part 2: optimize mu    
@@ -390,9 +338,6 @@ for target_idx in cor_GD_collection:
     
     for ep_idx in range(ep_num):    
 
-        
-
-        
         pl_pmu_target_0 = my_functions.my_penalized_GD_with_log_barrier_update_mu(all_event_time, all_event_idx, target_idx, mu1, A1, B, M_train, batch_size = batch_size, 
                                                                       log_barrier = False, memory_length = memory_length)        
         pl_pmu_target = pl_pmu_target_0
@@ -400,7 +345,6 @@ for target_idx in cor_GD_collection:
         tmp_grad_norm_mu0 = np.sqrt((pl_pmu_target_0**2).sum())
 
         tmp_grad_norm_mu = np.sqrt((pl_pmu_target**2).sum())
-        #tmp_grad_norm_A = np.sqrt((pl_pA_target**2).sum())
    
         
         if tmp_grad_norm_mu0 <= mu_grad_norm_traj_naiveGD0[-1]:
@@ -408,25 +352,21 @@ for target_idx in cor_GD_collection:
             
             tmp_idx = target_idx
             
-            #A1[tmp_idx,:] += lr*pl_pA_target/tmp_grad_norm_A
             mu1[tmp_idx] += lr*pl_pmu_target/tmp_grad_norm_mu
             mu1[mu1 < 0] = 0        
             # save the traj_naiveGD
             
+            # here we still apply projected GD for mu. Therefore, when it becomes zero, there is no need to continue the iteration.
             if mu1[tmp_idx] == 0:
                 break
             
             err_mu_naiveGD.append(np.sum(np.abs(mu-mu1)))
-            #err_A.append(np.sum(np.abs(A-A1)))
             
             mu_traj_naiveGD.append(mu1.copy())    
-            #A_traj_naiveGD.append(A1.copy())
             
             mu_grad_norm_traj_naiveGD.append(tmp_grad_norm_mu)  
-            #A_grad_norm_traj_naiveGD.append(tmp_grad_norm_A) 
             
             mu_grad_norm_traj_naiveGD0.append(tmp_grad_norm_mu0)  
-            #A_grad_norm_traj_naiveGD0.append(tmp_grad_norm_A0) 
             
         else:
             
@@ -434,18 +374,13 @@ for target_idx in cor_GD_collection:
             print("lr =",lr)
 
             err_mu_naiveGD = err_mu_naiveGD[:-1]
-            #err_A = err_A[:-1]
             
             mu_traj_naiveGD = mu_traj_naiveGD[:-1]
-            #A_traj_naiveGD = A_traj_naiveGD[:-1]
             
             mu_grad_norm_traj_naiveGD = mu_grad_norm_traj_naiveGD[:-1]
-            #A_grad_norm_traj_naiveGD = A_grad_norm_traj_naiveGD[:-1]
             
             mu_grad_norm_traj_naiveGD0 = mu_grad_norm_traj_naiveGD0[:-1]
-            #A_grad_norm_traj_naiveGD0 = A_grad_norm_traj_naiveGD0[:-1]        
             
-            #A1 = A_traj_naiveGD[-1]
             mu1 = mu_traj_naiveGD[-1]    
     
         if lr <= lr_thres:
@@ -458,6 +393,7 @@ for target_idx in cor_GD_collection:
             
             print("iter",ep_idx+1,"elapsed time is hour:",elapsed/3600.0)
             print("mu L1 err =",err_mu_naiveGD[-1])    
+
 
 # plot the recovered matrix
 plt.style.use("default")
@@ -477,12 +413,13 @@ for i in range(d):
 plt.show()
 plt.close()
 ```
+We can see this recovered adjacency matrix is very close to the true one.
 
 <img src="./examples/recovered_A.png" width="500">
 
 ## Dependencies
 
-This code was implemented using Python 3.8 and needs Numpy, Matplotlib Seaborn and Scipy.
+This code was implemented using Python 3.8 and mainly built on Numpy.
 
 ## Installation
 
@@ -490,6 +427,6 @@ Copy all files in the current working directory.
 
 ## Author
 
-Song Wei
+Song Wei <song.wei@gatech.edu>
 
 
